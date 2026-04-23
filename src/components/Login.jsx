@@ -80,7 +80,7 @@ const Login = () => {
             className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight"
             style={{ fontFamily: 'Poppins, sans-serif' }}
           >
-            HR FMS
+            Employee Exit System
           </h2>
           <p
             className="text-sm text-black"
