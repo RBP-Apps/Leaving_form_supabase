@@ -72,8 +72,9 @@ const Login = () => {
         {/* Logo Section */}
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-              <FontAwesomeIcon icon={faUsers} className="text-white h-8 w-8" />
+            <div className="h-32 w-32  flex items-center justify-center">
+              {/* <FontAwesomeIcon icon={faUsers} className="text-white h-8 w-8" /> */}
+              <img src="/Logo.PNG" alt="" />
             </div>
           </div>
           <h2
@@ -116,27 +117,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password */}
-            {/* <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-blue-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm bg-white/70 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all sm:text-sm"
-                  placeholder="Enter your password"
-                />
-              </div>
-            </div> */}
+            
 
             <div>
               <label className="block text-sm font-semibold text-blue-700 mb-2">
