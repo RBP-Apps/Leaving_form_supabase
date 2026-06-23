@@ -22,9 +22,9 @@ const Login = () => {
     try {
       // 🔹 1. Fetch user from Supabase
       const { data: users, error } = await supabase
-        .from("users")
+        .from("users_employee")
         .select("*")
-        .eq("user_name", username)
+        .eq("emp_name", username)
         .eq("password", password)
         .single();
 
@@ -81,14 +81,9 @@ const Login = () => {
             className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight"
             style={{ fontFamily: 'Poppins, sans-serif' }}
           >
-            Employee Exit System
+            Employee System
           </h2>
-          <p
-            className="text-sm text-black"
-            style={{ fontFamily: 'Poppins, sans-serif' }}
-          >
-            Human Resource & File Management System
-          </p>
+
         </div>
 
         {/* Form */}
@@ -117,7 +112,7 @@ const Login = () => {
               </div>
             </div>
 
-            
+
 
             <div>
               <label className="block text-sm font-semibold text-blue-700 mb-2">

@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Login from './components/Login';
-import LeavingForm from './components/LeavingForm';
+import DashboardLayout from './components/DashboardLayout';
 import useAuthStore from './store/authStore';
 
 const ProtectedRoute = ({ children }) => {
@@ -19,7 +19,7 @@ function App() {
           path="/" 
           element={
             <ProtectedRoute>
-              <LeavingForm />
+              <DashboardLayout />
             </ProtectedRoute>
           } 
         />
