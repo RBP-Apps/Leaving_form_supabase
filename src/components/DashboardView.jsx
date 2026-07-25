@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -12,9 +12,38 @@ import {
   Coffee,
   CheckCircle
 } from 'lucide-react';
+import supabase from '../utils/supabase';
 
 const DashboardView = ({ user, setActiveTab }) => {
   const userName = user?.emp_name;
+  const [gender, setGender] = useState(user?.gender || user?.Gender || '');
+
+  useEffect(() => {
+    if (user?.gender || user?.Gender) {
+      setGender(user.gender || user.Gender);
+      return;
+    }
+    const fetchGender = async () => {
+      if (!user) return;
+      try {
+        let query = supabase.from("joining").select("gender");
+        if (user.employee_id) {
+          query = query.eq("rbp_joining_id", user.employee_id);
+        } else if (user.emp_name) {
+          query = query.ilike("name_as_per_aadhar", `%${user.emp_name.trim()}%`);
+        }
+        const { data } = await query.maybeSingle();
+        if (data?.gender) {
+          setGender(data.gender);
+        }
+      } catch (err) {
+        console.error("Error fetching gender:", err);
+      }
+    };
+    fetchGender();
+  }, [user]);
+
+  const shiftTime = gender?.toLowerCase() === 'female' ? '09:30 AM - 06:00 PM' : '09:30 AM - 06:30 PM';
 
   // Get dynamic greeting
   const getGreeting = () => {
@@ -132,7 +161,7 @@ const DashboardView = ({ user, setActiveTab }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                 <span className="text-xs font-medium text-gray-500 uppercase block">Shift Time</span>
-                <span className="text-base font-bold text-gray-800 mt-1 block">09:30 AM - 06:30 PM</span>
+                <span className="text-base font-bold text-gray-800 mt-1 block">{shiftTime}</span>
                 <span className="text-xs text-gray-400 mt-0.5 block">General Day Roster</span>
               </div>
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">

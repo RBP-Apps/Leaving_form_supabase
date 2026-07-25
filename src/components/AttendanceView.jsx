@@ -177,13 +177,6 @@ const AttendanceView = ({ user }) => {
   const [error, setError] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
 
-  // States for Attendance Edit Correction
-  const [selectedEditItem, setSelectedEditItem] = useState(null);
-  const [editInTime, setEditInTime] = useState("");
-  const [editMidTime, setEditMidTime] = useState("");
-  const [editOutTime, setEditOutTime] = useState("");
-  const [editRemark, setEditRemark] = useState("");
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Generate dynamic list of last 6 months
   const months = useMemo(() => {
@@ -424,150 +417,6 @@ const AttendanceView = ({ user }) => {
 
 
 
-  const handleOpenEditModal = (item) => {
-    setSelectedEditItem(item);
-    setEditInTime(item.inTime || "");
-    setEditMidTime(item.midEntries && item.midEntries.length > 0 ? item.midEntries[0] : "");
-    setEditOutTime(item.outTime || "");
-    setEditRemark("");
-  };
-
-  const handleCloseEditModal = () => {
-    setSelectedEditItem(null);
-    setEditInTime("");
-    setEditMidTime("");
-    setEditOutTime("");
-    setEditRemark("");
-  };
-
-  const handleSaveAttendanceEdit = async () => {
-    if (!editRemark.trim()) {
-      toast.error("Remark is required!");
-      return;
-    }
-
-    setIsSavingEdit(true);
-    try {
-      const username = user?.emp_name || "Employee";
-      const currentDateTime = new Date().toLocaleString();
-      const currentTimestamp = new Date().toISOString();
-
-      const formatToHHMMSS = (t) => {
-        if (!t) return null;
-        if (t.split(":").length === 2) return `${t}:00`;
-        return t;
-      };
-
-      if (selectedEditItem.type === "biometric") {
-        // 1. Update offline_biometric_punch table
-        const { error: bioError } = await supabase
-
-          .from("offline_biometric_punch")
-          .update({
-            requested_in_time: formatToHHMMSS(editInTime),
-            requested_out_time: formatToHHMMSS(editOutTime),
-            correction_remark: editRemark,
-            approval_status: "pending",
-            updated_by: username,
-            updated_at: currentTimestamp
-          })
-          .eq("employee_id", selectedEditItem.employeeId)
-          .eq("attendance_date", selectedEditItem.date);
-
-        if (bioError) throw bioError;
-
-        // 2. Insert correction log into attendance table
-        const [year, month] = selectedEditItem.date.split("-");
-        const monthName = new Date(selectedEditItem.date).toLocaleString("default", { month: "long" });
-
-        const { error: attError } = await supabase
-          .from("attendance")
-          .insert({
-            person_name: selectedEditItem.employee,
-            date: selectedEditItem.date,
-            status: "corrected",
-            approved_status: "corrected",
-            reason: `${editRemark} (Updated by: ${username} at ${currentDateTime})`,
-            timestamp: currentTimestamp,
-            year_name: year,
-            month_name: monthName,
-            updated_by: username,
-            updated_at: currentTimestamp,
-            remark: editRemark
-          });
-        if (attError) console.error("Error inserting biometric correction log:", attError);
-      } else {
-        // Field Staff type
-        const [year, month] = selectedEditItem.date.split("-");
-        const monthName = new Date(selectedEditItem.date).toLocaleString("default", { month: "long" });
-
-        const updateStatusRow = async (status, newTime, originalTime) => {
-          const formatted = formatToHHMMSS(newTime);
-          if (originalTime) {
-            if (!newTime) {
-              const { error } = await supabase
-                .from("attendance")
-                .delete()
-                .eq("person_name", selectedEditItem.employee)
-                .eq("date", selectedEditItem.date)
-                .eq("status", status);
-              if (error) throw error;
-            } else if (newTime !== originalTime) {
-              const { error } = await supabase
-                .from("attendance")
-                .update({
-                  time: formatted,
-                  reason: `${editRemark} (Updated by: ${username} at ${currentDateTime})`,
-                  approved_status: "corrected",
-                  timestamp: currentTimestamp,
-                  updated_by: username,
-                  updated_at: currentTimestamp,
-                  remark: editRemark
-                })
-                .eq("person_name", selectedEditItem.employee)
-                .eq("date", selectedEditItem.date)
-                .eq("status", status);
-              if (error) throw error;
-            }
-          } else {
-            if (newTime) {
-              const { error } = await supabase
-                .from("attendance")
-                .insert({
-                  person_name: selectedEditItem.employee,
-                  date: selectedEditItem.date,
-                  status: status,
-                  time: formatted,
-                  reason: `${editRemark} (Updated by: ${username} at ${currentDateTime})`,
-                  approved_status: "corrected",
-                  timestamp: currentTimestamp,
-                  year_name: year,
-                  month_name: monthName,
-                  updated_by: username,
-                  updated_at: currentTimestamp,
-                  remark: editRemark
-                });
-              if (error) throw error;
-            }
-          }
-        };
-
-        await updateStatusRow("IN", editInTime, selectedEditItem.inTime);
-        await updateStatusRow("MID", editMidTime, selectedEditItem.midEntries && selectedEditItem.midEntries.length > 0 ? selectedEditItem.midEntries[0] : null);
-        await updateStatusRow("OUT", editOutTime, selectedEditItem.outTime);
-      }
-
-      toast.success("Attendance correction submitted successfully!");
-      handleCloseEditModal();
-      fetchAttendance();
-    } catch (err) {
-      console.error("Error saving attendance edit:", err);
-      toast.error("Failed to save changes: " + (err.message || err));
-    } finally {
-      setIsSavingEdit(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Upper Metrics Grid */}
@@ -724,7 +573,6 @@ const AttendanceView = ({ user }) => {
               <thead className="sticky top-0 z-20 bg-white">
                 <tr className="bg-gray-50/70 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
                   <th className="px-6 py-4">S.No.</th>
-                  <th className="px-6 py-4">Correction</th>
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4 whitespace-nowrap">Date & Day</th>
                   <th className="px-6 py-4">Clock In</th>
@@ -738,7 +586,7 @@ const AttendanceView = ({ user }) => {
               <tbody className="divide-y divide-gray-100 text-sm font-semibold text-gray-700">
                 {loading ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-16 text-center">
+                    <td colSpan="10" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3 justify-center">
                         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                         <span className="text-gray-400 text-xs font-bold">Loading attendance records...</span>
@@ -747,7 +595,7 @@ const AttendanceView = ({ user }) => {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-12 text-center text-red-500 font-bold">
+                    <td colSpan="10" className="px-6 py-12 text-center text-red-500 font-bold">
                       Error loading records: {error}
                     </td>
                   </tr>
@@ -756,20 +604,6 @@ const AttendanceView = ({ user }) => {
                     <React.Fragment key={`${row.type}_${row.date}_${idx}`}>
                       <tr className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-4 text-xs font-bold text-gray-400">{idx + 1}</td>
-                        <td className="px-6 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                            checked={selectedEditItem && selectedEditItem.type === row.type && selectedEditItem.date === row.date}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                handleOpenEditModal(row);
-                              } else {
-                                handleCloseEditModal();
-                              }
-                            }}
-                          />
-                        </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${row.type === "biometric"
                             ? "bg-purple-50 text-purple-700 border-purple-200"
@@ -817,7 +651,7 @@ const AttendanceView = ({ user }) => {
                       {/* Field Visited Details Expanded Row */}
                       {expandedRows[idx] && row.type === "field" && (
                         <tr className="bg-gray-50/40">
-                          <td colSpan="11" className="px-6 py-5 border-t border-b border-gray-100">
+                          <td colSpan="10" className="px-6 py-5 border-t border-b border-gray-100">
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
                                 <MapPin className="w-4 h-4 text-blue-600" />
@@ -885,7 +719,7 @@ const AttendanceView = ({ user }) => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="11" className="px-6 py-16 text-center">
+                    <td colSpan="10" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-2 justify-center">
                         <Database className="w-10 h-10 text-gray-300" />
                         <p className="text-gray-400 text-xs font-bold">No attendance records found for this period.</p>
@@ -902,126 +736,7 @@ const AttendanceView = ({ user }) => {
         </div>
       </div>
 
-      {/* EDIT DAILY ATTENDANCE CORRECTION MODAL */}
-      {selectedEditItem && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col border border-gray-100 transform scale-100 transition-all">
 
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 px-6 py-4 flex items-center justify-between text-white">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider">Attendance Correction</h3>
-                <p className="text-xs text-blue-100 mt-0.5">Date: {selectedEditItem.date}</p>
-              </div>
-              <button onClick={handleCloseEditModal} className="p-1 rounded-lg hover:bg-white/10 text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                  Updated Date & Time
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={new Date().toLocaleString()}
-                  className="w-full px-3 py-2 text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                  Updated By
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={user?.emp_name || "Employee"}
-                  className="w-full px-3 py-2 text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
-                />
-              </div>
-
-              {/* Time pickers */}
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1">IN Time</label>
-                  <input
-                    type="time"
-                    step="1"
-                    value={editInTime}
-                    onChange={(e) => setEditInTime(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1">MID Time</label>
-                  <input
-                    type="time"
-                    step="1"
-                    disabled={selectedEditItem.type === "biometric"}
-                    value={editMidTime}
-                    onChange={(e) => setEditMidTime(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-55 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1">OUT Time</label>
-                  <input
-                    type="time"
-                    step="1"
-                    value={editOutTime}
-                    onChange={(e) => setEditOutTime(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Remark */}
-              <div>
-                <label className="block text-[10px] font-bold text-rose-500 mb-1 uppercase tracking-wider">
-                  Reason / Remark *
-                </label>
-                <textarea
-                  rows="3"
-                  required
-                  placeholder="State the reason/remark for correction request"
-                  value={editRemark}
-                  onChange={(e) => setEditRemark(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-medium border border-rose-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-450 placeholder-rose-200"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2">
-              <button
-                onClick={handleCloseEditModal}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveAttendanceEdit}
-                disabled={isSavingEdit || !editRemark.trim()}
-                className={`px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 hover:bg-blue-700 ${isSavingEdit || !editRemark.trim() ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-              >
-                {isSavingEdit ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Correction"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
